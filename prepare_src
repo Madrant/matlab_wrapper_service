@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Change CR+LF (Windows) to LF (Linux)
+echo "Changing CLRF at CodeGen"
+sed -i "s/\r//g" "CodeGen/"*/*.{h,c,hpp,cpp,bat,mk}
