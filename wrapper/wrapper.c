@@ -7,7 +7,7 @@ extern "C" {
 #include <stdio.h>
 
 #include "rtwtypes.h"
-#include "MFR.h"
+#include "MODEL.h"
 
 #ifndef MODEL
 # error Must specify a model name.  Define MODEL=name.
