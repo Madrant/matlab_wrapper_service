@@ -1,4 +1,4 @@
-// Model output
+// Model input
 struct input_data_t
 {
     float a;
@@ -9,7 +9,7 @@ struct input_data_t
 
 typedef struct input_data_t input_data;
 
-// Model input
+// Model output
 struct output_data_t
 {
     float x;
