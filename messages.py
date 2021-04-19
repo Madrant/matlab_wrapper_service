@@ -98,6 +98,9 @@ class input_message(network_message):
 
 # Output message
 class output_message(network_message):
+    name = "Output message"
+    tr_type = 2
+
     _fields_ = [
         ("x",             c_float),
         ("y",             c_float),
@@ -132,12 +135,19 @@ class tr_message():
             return
 
         # Save message body
-        self.body = data[tr-header.size:re_header.size + body_size]
+        self.body = data[tr_header.size:tr_header.size + body_size]
 
     def convert(self, message):
-        unpacked_message = message(
-            *struct.unpack(message.format, self.body[0:message.size])
-        )
+        try:
+            unpacked_message = message(
+                *struct.unpack(message.format, self.body[0:message.size])
+            )
+        except struct.error as e:
+            print(
+                "tr_message: convert(): Failed to convert %u bytes to '%s': %s" %
+                (len(self.body), message.__qualname__, str(e))
+            )
+            raise
 
         unpacked_message.tr_header = self.tr_header
 
