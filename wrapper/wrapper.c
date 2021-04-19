@@ -55,11 +55,11 @@ void model_init()
 
 // Define macros to set model input and get model output
 #ifdef MODEL_CLASSNAME // C++ generated model
-# define MODEL_SET_INPUT(input)  MODEL_INSTANCE.setExternalInputs(&input)
+# define MODEL_SET_INPUT(input)  MODEL_INSTANCE.setExternalInputs(input)
 # define MODEL_GET_OUTPUT(input) MODEL_INSTANCE.getExternalOutputs()
 #else // C generated model
 // Please check model input and output variables names
-# define MODEL_SET_INPUT(input)  MODEL_U = input
+# define MODEL_SET_INPUT(input)  MODEL_U = *input
 # define MODEL_GET_OUTPUT(input) MODEL_Y
 #endif
 
@@ -72,7 +72,7 @@ void model_step(input_data* input, output_data* output)
         input->a, input->b, input->c, input->d
     );
 
-    MODEL_SET_INPUT(input);
+    //MODEL_SET_INPUT(input);
 
     /* Process one model step */
     MODEL_STEP();
