@@ -2,79 +2,24 @@
 OBJ_DIR := obj
 OUT_DIR := out
 
+# Project name in CodeGen folder:
 PROJECT = model_name
-
-# Files to compile
-C_FILES += $(wildcard CodeGen/$(PROJECT)/*.c)
-C_FILES += $(wildcard Matlab/rtw/c/src/*.c)
-C_FILES += $(wildcard Matlab/rtw/c/src/common/*.c)
-C_FILES += $(wildcard wrapper/*.c)
-
-CPP_FILES += $(wildcard CodeGen/$(PROJECT)/*.cpp)
-CPP_FILES += $(wildcard Matlab/rtw/c/src/*.cpp)
-CPP_FILES += $(wildcard Matlab/rtw/c/src/common/*.cpp)
-CPP_FILES += $(wildcard wrapper/*.cpp)
-
-CU_FILES += $(wildcard CodeGen/$(PROJECT)/*.cu)
-
-# Associate .c files with .o files by name
-vpath %.c CodeGen/$(PROJECT)
-vpath %.c Matlab/rtw/c/src
-vpath %.c Matlab/rtw/c/src/common
-vpath %.c wrapper
-
-vpath %.cpp CodeGen/$(PROJECT)
-vpath %.cpp Matlab/rtw/c/src
-vpath %.cpp Matlab/rtw/c/src/common
-vpath %.cpp wrapper
-
-vpath %.cu CodeGen/$(PROJECT)
-
-# Place all object files to $(OBJ_DIR) during build
-C_O_FILES := $(addprefix $(OBJ_DIR)/, $(patsubst %.c, %.c.o, $(notdir $(C_FILES))))
-CPP_O_FILES := $(addprefix $(OBJ_DIR)/, $(patsubst %.cpp, %.cpp.o, $(notdir $(CPP_FILES))))
-CU_O_FILES :=  $(addprefix $(OBJ_DIR)/, $(patsubst %.cu, %.cu.o, $(notdir $(CU_FILES))))
-
-O_FILES := $(C_O_FILES) $(CPP_O_FILES) $(CU_O_FILES)
 
 # Output file
 TARGET = model
+
+MATLAB_SRC=Matlab
+GEN_SRC=CodeGen
+WRAPPER_SRC=wrapper
 
 # Compiler setup
 CC = g++
 NVCC = nvcc
 
-# Modify PATH to setup Nvidia CUDA binaries path
-CUDA_PATH ?= /usr/local/cuda-11.2
-
-export PATH := $(CUDA_PATH)/bin:$(PATH)
-
-# Include path
-MATLAB_SRC=Matlab
-GEN_SRC=CodeGen
-WRAPPER_SRC=wrapper
-
-INCLUDE_PATH += -I$(GEN_SRC)/$(PROJECT)
-INCLUDE_PATH += -I$(MATLAB_SRC)/extern/include
-INCLUDE_PATH += -I$(MATLAB_SRC)/simulink/include
-INCLUDE_PATH += -I$(MATLAB_SRC)/toolbox/shared/dsp/vision/matlab/include
-INCLUDE_PATH += -I$(MATLAB_SRC)/rtw/c/src
-INCLUDE_PATH += -I$(MATLAB_SRC)/rtw/c/src/ext_mode/common
-INCLUDE_PATH += -I$(WRAPPER_SRC)
-
-# Setup CUDA include path if .cu files is found
-ifneq ($(CU_O_FILES),)
-INCLUDE_PATH += -I$(CUDA_PATH)/include
-endif
-
-# Matlab build definitions (from defines.txt)
-M_STD_DEF += -DMODEL=MODEL -DNUMST=2 -DNCSTATES=0 -DHAVESTUDIO -DRT -DUSE_RTMODEL
-M_DEF += -DCLASSIC_INTERFACE=0 -DALLOCATIONFCN=0 -DTID01EQ=0 -DMAT_FILE=0 -DONESTEPFCN=1 -DTERMFCN=1 -DMULTI_INSTANCE_CODE=0 -DINTERGER_CODE=0 -DMT=0
-
 # C Build parameters
 C_DEF += -DDEBUG
 C_WARN += -Wall -Wextra -Wconversion -Wsign-conversion -Weffc++ -Wno-unused-function
-C_PARAMS += -Ofast -fpic
+C_PARAMS += -Ofast -fpic -fpermissive
 
 # CUDA compiler parametersr
 CUDA_PARAMS += -Xcompiler -fPIC
@@ -83,10 +28,69 @@ CUDA_PARAMS += -Xcompiler -fPIC
 L_PARAMS += -flto
 L_PARAMS += -Wl,--gc-sections
 
-LIBS += -lm
+LIBS += -lm -ldl
 
 L_CUDA_PARAMS += -L$(CUDA_PATH)/lib64
 CUDA_LIBS += -lcuda -lcublas -lcusolver -lcudart
+
+# Modify PATH to setup Nvidia CUDA binaries path
+CUDA_PATH ?= /usr/local/cuda-11.2
+
+export PATH := $(CUDA_PATH)/bin:$(PATH)
+
+# Files to compile
+C_FILES += $(wildcard $(GEN_SRC)/$(PROJECT)/*.c)
+C_FILES += $(shell find $(GEN_SRC)/slprj -type f -name *.c -print)
+C_FILES += $(wildcard wrapper/*.c)
+C_FILES += $(shell find $(MATLAB_SRC) -type f -name *.c -print)
+
+CPP_FILES += $(wildcard $(GEN_SRC)/$(PROJECT)/*.cpp)
+CPP_FILES += $(shell find $(GEN_SRC)/slprj -type f -name *.cpp -print)
+CPP_FILES += $(wildcard wrapper/*.cpp)
+CPP_FILES += $(shell find $(MATLAB_SRC) -type f -name *.cpp -print)
+
+CU_FILES += $(wildcard $(GEN_SRC)/$(PROJECT)/*.cu)
+
+# Associate .c files with .o files by name
+vpath %.c $(GEN_SRC)/$(PROJECT)
+vpath %.c $(shell find $(GEN_SRC)/slprj -type f -name *.c -printf "%h\n" | uniq)
+vpath %.c $(shell find $(MATLAB_SRC) -type f -name *.c -printf "%h\n" | uniq)
+vpath %.c $(WRAPPER_SRC)
+
+vpath %.cpp $(GEN_SRC)/$(PROJECT)
+vpath %.cpp $(shell find $(GEN_SRC)/slprj -type f -name *.cpp -printf "%h\n" | uniq)
+vpath %.cpp $(shell find $(MATLAB_SRC) -type f -name *.cpp -printf "%h\n" | uniq)
+vpath %.cpp $(WRAPPER_SRC)
+
+vpath %.cu $(GEN_SRC)/$(PROJECT)
+
+# Place all object files to $(OBJ_DIR) during build
+C_O_FILES := $(addprefix $(OBJ_DIR)/, $(patsubst %.c, %.c.o, $(notdir $(C_FILES))))
+CPP_O_FILES := $(addprefix $(OBJ_DIR)/, $(patsubst %.cpp, %.cpp.o, $(notdir $(CPP_FILES))))
+CU_O_FILES :=  $(addprefix $(OBJ_DIR)/, $(patsubst %.cu, %.cu.o, $(notdir $(CU_FILES))))
+
+O_FILES := $(C_O_FILES) $(CPP_O_FILES) $(CU_O_FILES)
+
+# Include path
+H_DIRS = $(shell find $(MATLAB_SRC) -type f -name *.h -printf "%h\n" | uniq)
+H_DIRS += $(shell find $(GEN_SRC)/slprj -type f -name *.h -printf "%h\n" | uniq)
+
+HPP_DIRS = $(shell find $(MATLAB_SRC) -type f -name *.hpp -printf "%h\n" | uniq)
+HPP_DIRS += $(shell find $(GEN_SRC)/slprj -type f -name *.hpp -printf "%h\n" | uniq)
+
+INCLUDE_PATH += -I$(GEN_SRC)/$(PROJECT)
+INCLUDE_PATH += -I$(WRAPPER_SRC)
+INCLUDE_PATH += $(addprefix -I,$(H_DIRS))
+INCLUDE_PATH += $(addprefix -I,$(HPP_DIRS))
+
+# Setup CUDA include path if .cu files is found
+ifneq ($(CU_O_FILES),)
+INCLUDE_PATH += -I$(CUDA_PATH)/include
+endif
+
+# Matlab build definitions (from defines.txt)
+M_DEF_CONTENT=$(shell cat $(GEN_SRC)/$(PROJECT)/defines.txt)
+M_DEF = $(addprefix -D,$(M_DEF_CONTENT))
 
 # Setup CUDA linker parameters if .cu files is found
 ifneq ($(CU_O_FILES),)
@@ -95,7 +99,7 @@ LIBS += $(CUDA_LIBS)
 endif
 
 .PHONY: all
-all: show static dynamic list
+all: show static dynamic app list
 
 .PHONY: prepare
 prepare:
@@ -109,7 +113,7 @@ list:
 .PHONY: show
 show:
 	@echo "C object files:"
-	@echo "$(O_FILES)"
+	@echo "$(C_O_FILES)"
 	@echo "CPP object files:"
 	@echo "$(CPP_O_FILES)"
 	@echo "CUDA object files:"
@@ -117,15 +121,21 @@ show:
 
 obj/%.c.o: %.c
 	@echo "# $< : $@"
-	$(CC) $(C_PARAMS) $(C_WARN) $(C_DEF) $(M_STD_DEF) $(M_DEF) $(INCLUDE_PATH) -c -o $@ $<
+	$(CC) $(C_PARAMS) $(C_WARN) $(C_DEF) $(M_DEF) $(INCLUDE_PATH) -c -o $@ $<
 
 obj/%.cpp.o: %.cpp
 	@echo "# $< : $@"
-	$(CC) $(C_PARAMS) $(C_WARN) $(C_DEF) $(M_STD_DEF) $(M_DEF) $(INCLUDE_PATH) -c -o $@ $<
+	$(CC) $(C_PARAMS) $(C_WARN) $(C_DEF) $(M_DEF) $(INCLUDE_PATH) -c -o $@ $<
 
 obj/%.cu.o: %.cu
 	@echo "# $< : $@"
-	$(NVCC) $(CUDA_PARAMS) $(C_DEF) $(M_STD_DEF) $(M_DEF) $(INCLUDE_PATH) -c -o $@ $<
+	$(NVCC) $(CUDA_PARAMS) $(C_DEF) $(M_DEF) $(INCLUDE_PATH) -c -o $@ $<
+
+.PHONY: app
+app: prepare $(O_FILES)
+# Link object files
+	@echo "# Linking $(TARGET)"
+	$(CC) -o $(OUT_DIR)/$(TARGET) $(L_PARAMS) $(LIBS) $(O_FILES)
 
 .PHONY: static
 static: prepare $(O_FILES)
