@@ -13,7 +13,6 @@ class udp_listener(threading.Thread):
 
         self.stack = deque(maxlen = maxlen)
 
-        self.mutex = threading.Lock()
         self.cv = threading.Condition()
         self.is_running = False
 
@@ -74,7 +73,7 @@ class udp_listener(threading.Thread):
                 print("Failed to convert %u bytes to '%s': %s" % (len(data), self.message_type.__qualname__, str(e)))
                 continue
 
-            self.mutex.acquire()
+            self.cv.acquire()
 
             self.last_message = received_message
             self.last_message_time = datetime.datetime.now()
@@ -82,9 +81,8 @@ class udp_listener(threading.Thread):
             self.stack.append(received_message)
             self.message_received = True
 
-            self.mutex.release()
-
             self.cv.notify()
+            self.cv.release()
 
     def join(self):
         try:
@@ -115,12 +113,15 @@ class udp_listener(threading.Thread):
                 from_cache = True
                 return (self.last_message, from_cache)
 
+        # Wait for a new message
+        self.cv.acquire()
+
         while not self.size():
             self.cv.wait()
 
-        self.mutex.acquire()
         m = self.stack.popleft()
-        self.mutex.release()
+
+        self.cv.release()
 
         return (m, from_cache)
 
@@ -134,18 +135,20 @@ class udp_listener(threading.Thread):
                 return (self.last_message, from_cache)
 
         # Wait for a new message
+        self.cv.acquire()
+
         while not self.size():
             self.cv.wait()
 
-        self.mutex.acquire()
-        m = self.stack.pop()
-        self.mutex.release()
+        m = self.stack.popleft()
+
+        self.cv.release()
 
         return (m, from_cache)
 
     def size(self):
-        self.mutex.acquire()
+        self.cv.acquire()
         stack_size = len(self.stack)
-        self.mutex.release()
+        self.cv.release()
 
         return stack_size
