@@ -106,31 +106,42 @@ class udp_listener(threading.Thread):
 
         return message_out_of_date
 
-    def first(self):
-        while not len(self.stack):
+    def first(self, cached = False):
+        from_cache = False
+
+        # If queue is empty but message is received at least once
+        if cached and self.is_message_received() and not self.size():
+            if not self.is_cached_message_out_of_date():
+                from_cache = True
+                return (self.last_message, from_cache)
+
+        while not self.size():
             self.cv.wait()
 
         self.mutex.acquire()
         m = self.stack.popleft()
         self.mutex.release()
 
-        return m
+        return (m, from_cache)
 
     def last(self, cached = False):
+        from_cache = False
+
         # If queue is empty but message is received at least once
-        if cached and self.is_message_received() and len(self.stack) == 0:
+        if cached and self.is_message_received() and not self.size():
             if not self.is_cached_message_out_of_date():
-                return self.last_message
+                from_cache = True
+                return (self.last_message, from_cache)
 
         # Wait for a new message
-        while not len(self.stack):
+        while not self.size():
             self.cv.wait()
 
         self.mutex.acquire()
         m = self.stack.pop()
         self.mutex.release()
 
-        return m
+        return (m, from_cache)
 
     def size(self):
         self.mutex.acquire()

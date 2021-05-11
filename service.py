@@ -82,9 +82,8 @@ if __name__ == "__main__":
 
             # Prepare model inputs for concurrent execution
             for i in range(0, num_threads):
-                params.append((
-                    input_listener.first()
-                ))
+                (input_data, from_cache) = input_listener.first(cached = True)
+                params.append((input_data))
 
             # Display input data
             (input_data) = params[0]
