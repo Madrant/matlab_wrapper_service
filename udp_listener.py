@@ -14,6 +14,7 @@ class udp_listener(threading.Thread):
         self.stack = deque(maxlen = maxlen)
 
         self.mutex = threading.Lock()
+        self.cv = threading.Condition()
         self.is_running = False
 
         self.ip = ip
@@ -83,6 +84,8 @@ class udp_listener(threading.Thread):
 
             self.mutex.release()
 
+            self.cv.notify()
+
     def join(self):
         try:
             self.is_running = False
@@ -105,7 +108,7 @@ class udp_listener(threading.Thread):
 
     def first(self):
         while not len(self.stack):
-            pass
+            self.cv.wait()
 
         self.mutex.acquire()
         m = self.stack.popleft()
@@ -121,7 +124,7 @@ class udp_listener(threading.Thread):
 
         # Wait for a new message
         while not len(self.stack):
-            pass
+            self.cv.wait()
 
         self.mutex.acquire()
         m = self.stack.pop()
@@ -130,4 +133,8 @@ class udp_listener(threading.Thread):
         return m
 
     def size(self):
-        return len(self.stack)
+        self.mutex.acquire()
+        stack_size = len(self.stack)
+        self.mutex.release()
+
+        return stack_size
