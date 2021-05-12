@@ -1,0 +1,16 @@
+[Unit]
+Description=Track manager
+After=local-fs.target
+Wants=network.target
+
+[Service]
+Type=exec
+Restart=on-failure
+
+ExecStart=/opt/model/model.py
+
+StandardOutput=null
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

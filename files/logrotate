@@ -1,0 +1,8 @@
+/var/log/model.log {
+    missingok
+    notifempty
+    create 644 root user
+    daily
+    rotate 1
+    compress
+}

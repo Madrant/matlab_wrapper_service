@@ -1,0 +1,107 @@
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:          model
+# Required-Start:    $syslog +cron
+# Required-Stop:     $syslog +cron
+# Default-Start:     2 3 5
+# Default-Stop:      0 6
+# Short-Description:
+# Description:
+### END INIT INFO
+
+#
+# /etc/rc.d/init.d/model
+#
+
+. /etc/sysconfig/rc
+. ${rc_functions}
+
+NAME=model
+APP=/usr/local/bin/${NAME}
+
+LOG_FILE=/var/log/model.log
+
+USER=root
+
+LOCK_FILE=/var/lock/subsys/model
+PID_FILE=/var/run/model.pid
+
+RETVAL=0
+
+RUN_CMD="stdbuf -oL ${APP} > ${LOG_FILE} 2>&1"
+
+case "$1" in
+    start)
+        # Remove stucked lock file
+        if not pidof -x "${APP}"; then rm -f "${LOCK_FILE}"; fi
+
+        if [ ! -f "${LOCK_FILE}" ]; then
+            boot_mesg $"Starting ${NAME} as '${RUN_CMD}'"
+
+            start-stop-daemon --start --oknodo --user "${USER}" --name "${NAME}" --chuid "${USER}" \
+                              --pidfile "${PID_FILE}" --make-pidfile --background \
+                              --startas /bin/bash -- -c "exec ${RUN_CMD}"
+
+            pid=$(pidof -x "${APP}")
+            RETVAL=$?
+
+            echo "${NAME} is running: PID: ${pid}"
+            echo "${pid}" > "${PID_FILE}"
+
+            [ $RETVAL -eq 0 ] && touch "${LOCK_FILE}"
+        else
+            pid=$(pidof -x "${APP}")
+            echo "Failed to run ${NAME}: Already running: PID: ${pid}"
+        fi
+    ;;
+    stop)
+        boot_mesg $"Stopping ${NAME}"
+
+        start-stop-daemon --stop --oknodo --user "${USER}" \
+        --pidfile "${PID_FILE}" --remove-pidfile \
+        --startas /bin/bash -- -c "exec ${RUN_CMD}"
+        RETVAL=$?
+
+        # kill process by pid if start-stop-daemon failed
+        if [ ! $RETVAL -eq 0 ]; then
+            echo "start-stop-daemon failed: ${RETVAL}"
+
+            pid=$(pidof -x "${APP}")
+
+            if [ ! -z "${pid}" ]; then
+                echo "Killing ${NAME} manually by PID: ${pid}"
+                kill ${pid}
+            else
+                echo "Failed to get PID of '${APP}'"
+            fi
+        fi
+
+        if [ $RETVAL -eq 0 ]; then
+            echo "${NAME} stopped"
+
+            if [ -f "${LOCK_FILE}" ]; then
+                echo "Removing lock-file: ${LOCK_FILE}"
+                rm -f "${LOCK_FILE}"
+            fi
+        fi
+    ;;
+    reload|restart)
+        ${0} stop
+        sleep 1
+        ${0} start
+    ;;
+    condrestart)
+        if [ -f "${LOCK_FILE}" ]; then
+            ${0} restart
+        fi
+    ;;
+    status)
+        statusproc "${APP}"
+    ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart|condrestart|status}"
+        exit 1
+    ;;
+esac
+
+exit 0
