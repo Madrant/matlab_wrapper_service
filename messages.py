@@ -37,7 +37,14 @@ class packed_ctypes_message():
 
     @classmethod
     def from_bytes(class_name, m_bytes):
-        return class_name(*struct.unpack(class_name.format, m_bytes))
+        try:
+            return class_name(*struct.unpack(class_name.format, m_bytes))
+        except struct.error as e:
+            print(
+                "from_bytes(): Failed to convert %u bytes to '%s': %s" %
+                (len(m_bytes), class_name, str(e))
+            )
+            raise
 
     def round_float(self, precision = 4, debug = False):
         for field in self._fields_:
