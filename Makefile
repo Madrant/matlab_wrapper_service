@@ -10,7 +10,7 @@ WRAPPER_SRC=wrapper
 PROJECT=$(shell basename $(shell find $(GEN_SRC) -type f -name defines.txt -printf "%h\n"))
 
 # Output file
-TARGET = mfr
+TARGET = model
 
 # Compiler setup
 CC = g++
@@ -38,30 +38,53 @@ CUDA_PATH ?= /usr/local/cuda-11.2
 
 export PATH := $(CUDA_PATH)/bin:$(PATH)
 
+# Check additional component directory CodeGen/slprj for presence
+ifneq ("$(wildcard $(GEN_SRC)/slprj)", "")
+SLPRJ = $(GEN_SRC)/slprj
+endif
+
 # Files to compile
+#
+# C
 C_FILES += $(wildcard $(GEN_SRC)/$(PROJECT)/*.c)
-C_FILES += $(shell find $(GEN_SRC)/slprj -type f -name *.c -print)
 C_FILES += $(wildcard wrapper/*.c)
 C_FILES += $(shell find $(MATLAB_SRC) -type f -name *.c -print)
 
+ifdef SLPRJ
+C_FILES += $(shell find $(SLPRJ) -type f -name *.c -print)
+endif
+
+# CPP
 CPP_FILES += $(wildcard $(GEN_SRC)/$(PROJECT)/*.cpp)
-CPP_FILES += $(shell find $(GEN_SRC)/slprj -type f -name *.cpp -print)
 CPP_FILES += $(wildcard wrapper/*.cpp)
 CPP_FILES += $(shell find $(MATLAB_SRC) -type f -name *.cpp -print)
 
+ifdef SLPRJ
+CPP_FILES += $(shell find $(SLPRJ) -type f -name *.cpp -print)
+endif
+
+# CUDA
 CU_FILES += $(wildcard $(GEN_SRC)/$(PROJECT)/*.cu)
 
 # Associate .c files with .o files by name
-vpath %.c $(GEN_SRC)/$(PROJECT)
-vpath %.c $(shell find $(GEN_SRC)/slprj -type f -name *.c -printf "%h\n" | uniq)
-vpath %.c $(shell find $(MATLAB_SRC) -type f -name *.c -printf "%h\n" | uniq)
-vpath %.c $(WRAPPER_SRC)
+#
+# C
+C_DIRS += $(GEN_SRC)/$(PROJECT)
+C_DIRS += $(shell find $(MATLAB_SRC) -type f -name *.c -printf "%h\n" | uniq)
+C_DIRS += $(shell find $(SLPRJ) -type f -name *.c -printf "%h\n" | uniq)
+C_DIRS += $(WRAPPER_SRC)
 
-vpath %.cpp $(GEN_SRC)/$(PROJECT)
-vpath %.cpp $(shell find $(GEN_SRC)/slprj -type f -name *.cpp -printf "%h\n" | uniq)
-vpath %.cpp $(shell find $(MATLAB_SRC) -type f -name *.cpp -printf "%h\n" | uniq)
-vpath %.cpp $(WRAPPER_SRC)
+vpath %.c $(C_DIRS)
 
+# CPP
+CPP_DIRS += $(GEN_SRC)/$(PROJECT)
+CPP_DIRS += $(shell find $(SLPRJ) -type f -name *.cpp -printf "%h\n" | uniq)
+CPP_DIRS += $(shell find $(MATLAB_SRC) -type f -name *.cpp -printf "%h\n" | uniq)
+CPP_DIRS += $(WRAPPER_SRC)
+
+vpath %.cpp $(CPP_DIRS)
+
+# CUDA
 vpath %.cu $(GEN_SRC)/$(PROJECT)
 
 # Place all object files to $(OBJ_DIR) during build
@@ -73,10 +96,12 @@ O_FILES := $(C_O_FILES) $(CPP_O_FILES) $(CU_O_FILES)
 
 # Include path
 H_DIRS = $(shell find $(MATLAB_SRC) -type f -name *.h -printf "%h\n" | uniq)
-H_DIRS += $(shell find $(GEN_SRC)/slprj -type f -name *.h -printf "%h\n" | uniq)
-
 HPP_DIRS = $(shell find $(MATLAB_SRC) -type f -name *.hpp -printf "%h\n" | uniq)
-HPP_DIRS += $(shell find $(GEN_SRC)/slprj -type f -name *.hpp -printf "%h\n" | uniq)
+
+ifdef SLPRJ
+H_DIRS += $(shell find $(SLPRJ) -type f -name *.h -printf "%h\n" | uniq)
+HPP_DIRS += $(shell find $(SLPRJ) -type f -name *.hpp -printf "%h\n" | uniq)
+endif
 
 INCLUDE_PATH += -I$(GEN_SRC)/$(PROJECT)
 INCLUDE_PATH += -I$(WRAPPER_SRC)
