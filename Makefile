@@ -2,15 +2,15 @@
 OBJ_DIR := obj
 OUT_DIR := out
 
-# Project name in CodeGen folder:
-PROJECT = model_name
-
-# Output file
-TARGET = model
-
 MATLAB_SRC=Matlab
 GEN_SRC=CodeGen
 WRAPPER_SRC=wrapper
+
+# There must be only one project in $(GEN_SRC) with defines.txt inside
+PROJECT=$(shell basename $(shell find $(GEN_SRC) -type f -name defines.txt -printf "%h\n"))
+
+# Output file
+TARGET = mfr
 
 # Compiler setup
 CC = g++
@@ -112,6 +112,7 @@ list:
 
 .PHONY: show
 show:
+	@echo "Project: $(PROJECT)"
 	@echo "C object files:"
 	@echo "$(C_O_FILES)"
 	@echo "CPP object files:"
