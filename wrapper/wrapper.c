@@ -54,31 +54,45 @@ void model_init()
 }
 
 // Define macros to set model input and get model output
+#define MODEL_DATA_TYPE CONCAT(MODEL,_T)
+
+#define MODEL_INPUT_DATA_TYPE  CONCAT(ExtU_,MODEL_DATA_TYPE)
+#define MODEL_OUTPUT_DATA_TYPE CONCAT(ExtY_,MODEL_DATA_TYPE)
+
 #ifdef MODEL_CLASSNAME // C++ generated model
-# define MODEL_SET_INPUT(input)  MODEL_INSTANCE.setExternalInputs(input)
+# define MODEL_SET_INPUT(input)  MODEL_INSTANCE.setExternalInputs(&input)
 # define MODEL_GET_OUTPUT(input) MODEL_INSTANCE.getExternalOutputs()
 #else // C generated model
 // Please check model input and output variables names
-# define MODEL_SET_INPUT(input)  MODEL_U = *input
-# define MODEL_GET_OUTPUT(input) MODEL_Y
+# define MODEL_INPUT_VAR  CONCAT(MODEL,_U)
+# define MODEL_OUTPUT_VAR CONCAT(MODEL,_Y)
+
+# define MODEL_SET_INPUT(input)  MODEL_INPUT_VAR = input
+# define MODEL_GET_OUTPUT(input) MODEL_OUTPUT_VAR
 #endif
 
 void model_step(input_data* input, output_data* output)
 {
     /* Initialize model inputs here */
+    MODEL_INPUT_DATA_TYPE model_input;
 
     info(
         "Input: a: %.2f b: %.2f c: %.2f d: %.2f\r\n",
         input->a, input->b, input->c, input->d
     );
 
-    //MODEL_SET_INPUT(input);
+    /* Copy fields from 'input' to 'model_input' */
+
+    /* Setup model inputs */
+    MODEL_SET_INPUT(model_input);
 
     /* Process one model step */
     MODEL_STEP();
 
     /* Read model outputs here */
-    // ExtY_MODEL_T output = MODEL_GET_OUTPUT();
+    MODEL_OUTPUT_DATA_TYPE model_output = MODEL_GET_OUTPUT();
+
+    /* Copy fields from 'model_output' to 'output' */
 
     info(
         "Output: x: %.2f y: %.2f z: %.2f\r\n",
