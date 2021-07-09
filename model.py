@@ -11,7 +11,7 @@ from ctypes import CDLL, POINTER, byref
 class model:
     # Open model library
     def __init__(self, lib, db_path = "db", cache_enabled = False):
-        libname = pathlib.Path().absolute() / lib
+        libname = "{}/{}".format(str(pathlib.Path().absolute()), lib)
         print("Loading library: %s" % libname)
 
         self.c_lib = CDLL(libname)
