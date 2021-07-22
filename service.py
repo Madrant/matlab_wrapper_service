@@ -71,6 +71,8 @@ if __name__ == "__main__":
 
     cpu = 6
 
+    pool = concurrent.futures.ProcessPoolExecutor()
+
     # Main loop
     try:
         while True:
@@ -83,10 +85,10 @@ if __name__ == "__main__":
             # Prepare model inputs for concurrent execution
             for i in range(0, num_threads):
                 (input_data, from_cache) = input_listener.first(cached = True)
-                params.append((input_data))
+                params.append(input_data)
 
             # Display input data
-            (input_data) = params[0]
+            input_data = params[0]
 
             print(
                 "Input: Num: %u Queue: %u" %
@@ -95,8 +97,11 @@ if __name__ == "__main__":
             print(input_data)
 
             # Execute model in 'num_threads' threads
-            with concurrent.futures.ThreadPoolExecutor() as ex:
-                futures = [ex.submit(process_input, model, param) for param in params]
+            futures = []
+
+            for param in params:
+                future = pool.submit(process_input, param)
+                futures.append(future)
 
             for future in futures:
                 (output_data, from_cache, step_time) = future.result()
