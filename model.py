@@ -14,7 +14,8 @@ class model:
         libname = "{}/{}".format(str(pathlib.Path().absolute()), lib)
         print("Loading library: %s" % libname)
 
-        self.c_lib = CDLL(libname)
+        RTLD_LAZY = 0x00001
+        self.c_lib = CDLL(libname, mode = RTLD_LAZY)
 
         self.cache_enabled = cache_enabled
         self.db_path = db_path
